@@ -1,100 +1,126 @@
-#include <DHT.h>              // Incluye la librería para el sensor DHT (temperatura y humedad)
-#include <LiquidCrystal.h>    // Incluye la librería para controlar la pantalla LCD
+#include <Adafruit_NeoPixel.h>		// Incluye la librería para controlar tiras de LEDs tipo NeoPixel (RGB direccionables)
 
-#define DHT_PIN 2             // Pin digital 2 conectado al sensor DHT
-#define DHT_TYPE DHT22        // Tipo de sensor (DHT22). Cambiar a DHT11 si es necesario
+// =========================
+// Definición de constantes (pines utilizados)
+// =========================
+const int PinLed = 6;       // Pin de la tira LED NeoPixel
+const int PinLuz = 7;       // Pin para luces generales
+const int PinEnabled = 5;   // Pin de activación de motor (puerta)
+const int PinAspersor = 3;  // Pin para el aspersor de agua
+const int PinVent = 9;      // Pin para el ventilador
+const int PinCale = 4;      // Pin para la calefacción
+const int PinInput1 = 10;   // Pin de control motor puerta (dirección 1)
+const int PinInput2 = 11;   // Pin de control motor puerta (dirección 2)
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2); // Inicializa el LCD con los pines RS=12, E=11, D4=5, D5=4, D6=3, D7=2
-DHT dht(DHT_PIN, DHT_TYPE);            // Crea el objeto del sensor DHT en el pin definido
+// =========================
+// Definición de variables
+// =========================
+char VarEntrada = 0;   // Variable donde se guarda el carácter recibido por Serial
+int Contador = 0;      // Contador usado en bucles (control de tiempo con delayMicroseconds)
 
-float temperatura;            // Variable para almacenar la temperatura
-float humedad;                // Variable para almacenar la humedad
-float indiceCalor;            // Variable para almacenar el índice de calor
+// =========================
+// Creación de objetos
+// =========================
+Adafruit_NeoPixel led = Adafruit_NeoPixel(4, PinLed, NEO_GRB + NEO_KHZ800);
+// Se crea un objeto "led" para controlar 4 LEDs NeoPixel conectados al pin PinLed
+// Formato NEO_GRB (verde, rojo, azul) y comunicación a 800 KHz
 
-unsigned long ultimaLectura = 0;                // Guarda el tiempo de la última lectura
-const unsigned long intervaloLectura = 2000;    // Intervalo de lectura del sensor (2 segundos)
+// =========================
+// Configuración inicial (setup)
+// =========================
+void setup(){
+  pinMode(PinLed, OUTPUT);       // Configura el pin de la tira LED como salida
+  pinMode(PinLuz, OUTPUT);       // Pin de luces generales como salida
+  pinMode(PinEnabled, OUTPUT);   // Pin de habilitación de motor como salida
+  pinMode(PinAspersor, OUTPUT);  // Pin del aspersor como salida
+  pinMode(PinVent, OUTPUT);      // Pin del ventilador como salida
+  pinMode(PinCale, OUTPUT);      // Pin de la calefacción como salida
+  pinMode(PinInput1, OUTPUT);    // Pin de dirección 1 del motor como salida
+  pinMode(PinInput2, OUTPUT);    // Pin de dirección 2 del motor como salida
 
-int frame = 0;                // Variable para el frame de animación
-unsigned long ultimoFrame = 0;// Guarda el tiempo del último cambio de frame
-
-void setup() {
-  Serial.begin(9600);         // Inicia comunicación serie a 9600 baudios
-  lcd.begin(16, 2);           // Inicializa la pantalla LCD con 16 columnas y 2 filas
-  dht.begin();                // Inicia el sensor DHT
-  mostrarPantallaInicio();    // Muestra pantalla de inicio en el LCD
-  Serial.println("=== SISTEMA DHT22 + LCD ==="); // Mensaje en monitor serie
-  Serial.println("Esperando lecturas...");
+  led.begin();				    // Inicializa la tira de LEDs NeoPixel
+  Serial.begin(9600);		    // Inicia la comunicación Serial a 9600 baudios
 }
+ 
+// =========================
+// Bucle principal (loop)
+// =========================
+void loop(){
+	if (Serial.available() > 0) {     // Si hay datos disponibles en el puerto Serial
+		VarEntrada = Serial.read();   // Leer el carácter recibido
+      	Serial.println(VarEntrada);   // Mostrar el carácter recibido en el monitor serial
 
-void loop() {
-  unsigned long tiempoActual = millis();  // Obtiene el tiempo actual desde que inició Arduino
-  
-  if (tiempoActual - ultimaLectura >= intervaloLectura) { // Si pasaron 2 segundos desde la última lectura
-    leerSensor();              // Lee el sensor
-    ultimaLectura = tiempoActual; // Actualiza el tiempo de última lectura
-  }
-  
-  if (tiempoActual - ultimoFrame >= 500) { // Si pasaron 500ms desde el último cambio de frame
-    actualizarAnimacion();     // Actualiza animación
-    ultimoFrame = tiempoActual;// Actualiza el tiempo de animación
-  }
-  
-  mostrarDatosLCD();           // Muestra los datos en la pantalla LCD
-}
+      	// Según el carácter recibido, ejecuta una acción
+      	switch (VarEntrada) {
 
-void leerSensor() {
-  humedad = dht.readHumidity();        // Lee la humedad relativa
-  temperatura = dht.readTemperature(); // Lee la temperatura en grados Celsius
-  
-  if (isnan(humedad) || isnan(temperatura)) { // Si ocurre error en la lectura
-    Serial.println("Error: No se pudo leer el sensor DHT");
-    lcd.clear();                       // Limpia pantalla LCD
-    lcd.setCursor(0, 0); lcd.print("Error sensor DHT"); // Muestra mensaje de error
-    lcd.setCursor(0, 1); lcd.print("Verificar conexion");
-    return;                            // Sale de la función
-  }
-  
-  indiceCalor = dht.computeHeatIndex(temperatura, humedad, false); // Calcula el índice de calor
-  mostrarDatosSerial();                // Muestra los datos en el monitor serie
-}
+      		case 'a': // Encender tira LED en color azul
+        		led.setBrightness(100);             	 // Ajusta brillo al 100
+  				for(int i = 0; i < 4; i++){		     // Recorre los 4 LEDs
+		    		led.setPixelColor(i, 0, 0, 255);   // Asigna color azul a cada LED
+    				led.show();		                 // Actualiza la tira LED
+            	}
+          		break;
 
-void mostrarDatosLCD() {
-  lcd.clear();                         // Limpia pantalla LCD
-  
-  lcd.setCursor(0, 0);                 // Primera fila
-  lcd.print("Temp: "); lcd.print(temperatura, 1); // Imprime temperatura con 1 decimal
-  lcd.print((char)223); lcd.print("C"); // Imprime símbolo de grados °C
-  
-  lcd.setCursor(14, 0);                // Posición para ícono de temperatura
-  if (temperatura < 15) lcd.print("❄");      // Frío
-  else if (temperatura >= 15 && temperatura <= 28) lcd.print("Normal"); // Normal
-  else lcd.print("calor");                // Caliente
-  
-  lcd.setCursor(0, 1);                 // Segunda fila
-  lcd.print("Humedad: "); lcd.print(humedad, 0); lcd.print("%"); // Humedad sin decimales
-  
-  lcd.setCursor(14, 1);                // Posición para ícono de humedad
-  if (humedad < 30) lcd.print("Seco");    // Seco
-  else if (humedad >= 30 && humedad <= 70) lcd.print("Normal"); // Normal
-  else lcd.print("humedo");                 // Húmedo
-}
+          	case 'b': // Apagar tira LED
+          		led.setBrightness(80);             	 // Ajusta brillo al 80 (aunque se apaga igual)
+  				for(int i = 0; i < 4; i++){		
+	    			led.setPixelColor(i, 0, 0, 0);    // Apaga cada LED (color negro = apagado)
+    				led.show();			
+            	}
+          		break;
 
-void mostrarDatosSerial() {
-  Serial.print("T: "); Serial.print(temperatura, 1); Serial.print("°C | ");
-  Serial.print("H: "); Serial.print(humedad, 0); Serial.print("% | ");
-  Serial.print("IC: "); Serial.print(indiceCalor, 1); Serial.print("°C | Estado: ");
-  
-  if (humedad < 30) Serial.println("Muy seco");   // Clasifica la humedad
-  else if (humedad >= 30 && humedad <= 60) Serial.println("Confortable");
-  else Serial.println("Húmedo");
-}
+          	case 'c': // Encender luces generales
+          		digitalWrite(PinLuz, HIGH);
+ 				break;
 
-void mostrarPantallaInicio() {
-  lcd.setCursor(0, 0); lcd.print("  SISTEMA DHT22  "); // Mensaje en la primera fila
-  lcd.setCursor(0, 1); lcd.print("  INICIANDO...  ");  // Mensaje en la segunda fila
-  delay(3000); lcd.clear();                            // Espera 3s y limpia la pantalla
-}
+          	case 'd': // Apagar luces generales
+          		digitalWrite(PinLuz, LOW);
+ 				break;
 
-void actualizarAnimacion() {
-  frame = (frame + 1) % 4;     // Cambia el frame de animación en bucle (0 a 3)
+          	case 'e': // Abrir puerta (sin fin de carrera, usando tiempo fijo)
+          		// Dirección del motor para abrir
+          		digitalWrite(PinInput1, HIGH);     
+        		digitalWrite(PinInput2, LOW);
+          		analogWrite(PinEnabled, 255);      // Motor a máxima velocidad
+          		for (Contador = 0; Contador < 50; Contador++){
+          			delayMicroseconds(8000);        // Espera breve repetida (simula el tiempo de apertura)
+        		}
+          		analogWrite(PinEnabled, 0);        // Detener motor
+          		break;
+
+          	case 'f': // Cerrar puerta (similar al caso anterior, pero dirección inversa)
+          		digitalWrite(PinInput1, LOW);     
+        		digitalWrite(PinInput2, HIGH);    // Dirección contraria
+          		analogWrite(PinEnabled, 255);     // Motor a máxima velocidad
+          		for (Contador = 0; Contador < 50; Contador++){
+          			delayMicroseconds(8000);        // Tiempo de cierre
+                }
+                analogWrite(PinEnabled, 0);       // Detener motor
+ 				break;
+
+          	case 'g': // Encender ventilador
+          		analogWrite(PinVent, 255);        // Ventilador al máximo
+ 				break;
+
+          	case 'h': // Apagar ventilador
+          		analogWrite(PinVent, 0);          // Ventilador apagado
+ 				break;
+
+          	case 'i': // Encender aspersor
+          		analogWrite(PinAspersor, 255);    // Aspersor al máximo
+ 				break;
+
+          	case 'j': // Apagar aspersor
+          		analogWrite(PinAspersor, 0);      // Aspersor apagado
+ 				break;
+
+          	case 'k': // Encender calefacción
+          		digitalWrite(PinCale, HIGH);      // Calefacción ON
+ 				break;
+
+          	case 'l': // Apagar calefacción
+          		digitalWrite(PinCale, LOW);       // Calefacción OFF
+ 				break;
+        }
+    }      
 }
